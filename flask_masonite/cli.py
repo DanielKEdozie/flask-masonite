@@ -30,61 +30,63 @@ def create_app_structure(app_name, app_title=None, app_description=None):
     project_dir = Path(app_name)
     project_dir.mkdir(exist_ok=True)
     
-    # Create application subdirectories directly in the project directory
-    (project_dir / 'controllers').mkdir(exist_ok=True)
-    (project_dir / 'models').mkdir(exist_ok=True)
-    (project_dir / 'templates').mkdir(exist_ok=True)
-    (project_dir / 'static').mkdir(exist_ok=True)
-    (project_dir / 'static' / 'css').mkdir(exist_ok=True)
-    (project_dir / 'static' / 'js').mkdir(exist_ok=True)
-    (project_dir / 'static' / 'images').mkdir(exist_ok=True)
-    (project_dir / 'forms').mkdir(exist_ok=True)
-    
-    # Create project-level directories
+    # Create config folder at root directory level
     (project_dir / 'config').mkdir(exist_ok=True)
-    (project_dir / 'routes').mkdir(exist_ok=True)
-    (project_dir / 'helpers').mkdir(exist_ok=True)
-    (project_dir / 'migrations').mkdir(exist_ok=True)
-    (project_dir / 'extensions').mkdir(exist_ok=True)  # Create extensions directory
+    
+    # Create inner app directory
+    app_dir = project_dir / 'app'
+    app_dir.mkdir(exist_ok=True)
+    
+    # Create application subdirectories inside the app directory
+    (app_dir / 'controllers').mkdir(exist_ok=True)
+    (app_dir / 'models').mkdir(exist_ok=True)
+    (app_dir / 'templates').mkdir(exist_ok=True)
+    (app_dir / 'static').mkdir(exist_ok=True)
+    (app_dir / 'static' / 'css').mkdir(exist_ok=True)
+    (app_dir / 'static' / 'js').mkdir(exist_ok=True)
+    (app_dir / 'static' / 'images').mkdir(exist_ok=True)
+    (app_dir / 'forms').mkdir(exist_ok=True)
+    (app_dir / 'routes').mkdir(exist_ok=True)
+    (app_dir / 'helpers').mkdir(exist_ok=True)
+    (app_dir / 'migrations').mkdir(exist_ok=True)
+    (app_dir / 'extensions').mkdir(exist_ok=True)
     
     # Create __init__.py files for the app
-    (project_dir / '__init__.py').write_text(create_app_init_content(app_name))
-    (project_dir / 'controllers' / '__init__.py').write_text(create_controllers_init_content())
-    (project_dir / 'models' / '__init__.py').write_text(create_models_init_content())
-    (project_dir / 'forms' / '__init__.py').write_text('')
+    (app_dir / '__init__.py').write_text(create_app_init_content(app_name))
+    (app_dir / 'controllers' / '__init__.py').write_text(create_controllers_init_content())
+    (app_dir / 'models' / '__init__.py').write_text(create_models_init_content())
+    (app_dir / 'forms' / '__init__.py').write_text('')
+    (app_dir / 'routes' / '__init__.py').write_text(create_routes_init_content())
+    (app_dir / 'helpers' / '__init__.py').write_text(create_helpers_init_content())
+    (app_dir / 'extensions' / '__init__.py').write_text(create_extensions_content())
     
-    # Create __init__.py files for project-level directories
-    (project_dir / 'routes' / '__init__.py').write_text(create_routes_init_content())
-    (project_dir / 'helpers' / '__init__.py').write_text(create_helpers_init_content())
+    # Create __init__.py files for root config directory
     (project_dir / 'config' / '__init__.py').write_text('')
     
-    # Create base config at project level
+    # Create base config at project root level
     (project_dir / 'config' / 'base.py').write_text(create_base_config_content())
     
     # Create model files
-    (project_dir / 'models' / 'user.py').write_text(create_user_model_content())
+    (app_dir / 'models' / 'user.py').write_text(create_user_model_content())
     
     # Create controller files
-    (project_dir / 'controllers' / 'home_controller.py').write_text(create_home_controller_content())
-    (project_dir / 'controllers' / 'auth_controller.py').write_text(create_auth_controller_content())
+    (app_dir / 'controllers' / 'home_controller.py').write_text(create_home_controller_content())
+    (app_dir / 'controllers' / 'auth_controller.py').write_text(create_auth_controller_content())
     
     # Create form files
-    (project_dir / 'forms' / 'auth_forms.py').write_text(create_auth_forms_content())
+    (app_dir / 'forms' / 'auth_forms.py').write_text(create_auth_forms_content())
     
     # Create template files
-    (project_dir / 'templates' / 'base.html').write_text(create_base_template_content(app_title))
-    (project_dir / 'templates' / 'index.html').write_text(create_index_template_content(app_title, app_description))
-    (project_dir / 'templates' / 'login.html').write_text(create_login_template_content())
-    (project_dir / 'templates' / 'signup.html').write_text(create_signup_template_content())
-    (project_dir / 'templates' / 'profile.html').write_text(create_profile_template_content())
-    (project_dir / 'templates' / 'dashboard.html').write_text(create_dashboard_template_content())
-    (project_dir / 'templates' / 'docs.html').write_text(create_docs_template_content())
+    (app_dir / 'templates' / 'base.html').write_text(create_base_template_content(app_title))
+    (app_dir / 'templates' / 'index.html').write_text(create_index_template_content(app_title, app_description))
+    (app_dir / 'templates' / 'login.html').write_text(create_login_template_content())
+    (app_dir / 'templates' / 'signup.html').write_text(create_signup_template_content())
+    (app_dir / 'templates' / 'profile.html').write_text(create_profile_template_content())
+    (app_dir / 'templates' / 'dashboard.html').write_text(create_dashboard_template_content())
+    (app_dir / 'templates' / 'docs.html').write_text(create_docs_template_content())
     
     # Create CSS file
-    (project_dir / 'static' / 'css' / 'style.css').write_text(create_css_content())
-    
-    # Create extensions file
-    (project_dir / 'extensions' / '__init__.py').write_text(create_extensions_content())
+    (app_dir / 'static' / 'css' / 'style.css').write_text(create_css_content())
     
     # Create run.py at project root level
     (project_dir / 'run.py').write_text(create_run_content(app_name))
@@ -95,42 +97,43 @@ def create_app_structure(app_name, app_title=None, app_description=None):
     click.echo(click.style(f"\nFlask-Masonite application '{app_name}' has been created successfully!", fg='green'))
     click.echo(f"\nDirectory structure:")
     click.echo(f"{app_name}/")
-    click.echo(f"├── run.py")
-    click.echo(f"├── requirements.txt")
-    click.echo(f"├── __init__.py")
-    click.echo(f"├── config/")
-    click.echo(f"│   ├── __init__.py")
-    click.echo(f"│   └── base.py")
-    click.echo(f"├── routes/")
-    click.echo(f"│   └── __init__.py")
-    click.echo(f"├── helpers/")
-    click.echo(f"│   └── __init__.py")
-    click.echo(f"├── extensions/")
-    click.echo(f"│   └── __init__.py")
-    click.echo(f"├── controllers/")
-    click.echo(f"│   ├── __init__.py")
-    click.echo(f"│   ├── home_controller.py")
-    click.echo(f"│   └── auth_controller.py")
-    click.echo(f"├── models/")
-    click.echo(f"│   ├── __init__.py")
-    click.echo(f"│   └── user.py")
-    click.echo(f"├── forms/")
-    click.echo(f"│   ├── __init__.py")
-    click.echo(f"│   └── auth_forms.py")
-    click.echo(f"├── templates/")
-    click.echo(f"│   ├── base.html")
-    click.echo(f"│   ├── index.html")
-    click.echo(f"│   ├── login.html")
-    click.echo(f"│   ├── signup.html")
-    click.echo(f"│   ├── profile.html")
-    click.echo(f"│   ├── dashboard.html")
-    click.echo(f"│   └── docs.html")
-    click.echo(f"├── static/")
-    click.echo(f"│   ├── css/")
-    click.echo(f"│   │   └── style.css")
-    click.echo(f"│   ├── js/")
-    click.echo(f"│   └── images/")
-    click.echo(f"└── migrations/")
+    click.echo(f"|-- run.py")
+    click.echo(f"|-- requirements.txt")
+    click.echo(f"|-- config/")
+    click.echo(f"|   |-- __init__.py")
+    click.echo(f"|   \\\\-- base.py")
+    click.echo(f"\\\\-- app/")
+    click.echo(f"    |-- __init__.py")
+    click.echo(f"    |-- routes/")
+    click.echo(f"    |   \\\\-- __init__.py")
+    click.echo(f"    |-- helpers/")
+    click.echo(f"    |   \\\\-- __init__.py")
+    click.echo(f"    |-- extensions/")
+    click.echo(f"    |   \\\\-- __init__.py")
+    click.echo(f"    |-- controllers/")
+    click.echo(f"    |   |-- __init__.py")
+    click.echo(f"    |   |-- home_controller.py")
+    click.echo(f"    |   \\\\-- auth_controller.py")
+    click.echo(f"    |-- models/")
+    click.echo(f"    |   |-- __init__.py")
+    click.echo(f"    |   \\\\-- user.py")
+    click.echo(f"    |-- forms/")
+    click.echo(f"    |   |-- __init__.py")
+    click.echo(f"    |   \\\\-- auth_forms.py")
+    click.echo(f"    |-- templates/")
+    click.echo(f"    |   |-- base.html")
+    click.echo(f"    |   |-- index.html")
+    click.echo(f"    |   |-- login.html")
+    click.echo(f"    |   |-- signup.html")
+    click.echo(f"    |   |-- profile.html")
+    click.echo(f"    |   |-- dashboard.html")
+    click.echo(f"    |   \\\\-- docs.html")
+    click.echo(f"    |-- static/")
+    click.echo(f"    |   |-- css/")
+    click.echo(f"    |   |   \\\\-- style.css")
+    click.echo(f"    |   |-- js/")
+    click.echo(f"    |   \\\\-- images/")
+    click.echo(f"    \\\\-- migrations/")
 
 
 def create_blueprint_structure(blueprint_name, project_root='.'):
@@ -142,14 +145,12 @@ def create_blueprint_structure(blueprint_name, project_root='.'):
         project_root (str): Root directory of the project (default is current directory)
     """
     project_dir = Path(project_root)
+    app_dir = project_dir / 'app'
     
-    # Create blueprint directory inside the main app directory
-    app_dirs = [d for d in project_dir.iterdir() if d.is_dir() and (d / 'controllers').exists()]
-    if not app_dirs:
+    if not app_dir.exists():
         click.echo(click.style(f"Error: Could not find app directory in {project_root}", fg='red'))
         return
     
-    app_dir = app_dirs[0]  # Take the first directory that looks like an app
     blueprint_dir = app_dir / 'blueprints' / blueprint_name
     blueprint_dir.mkdir(parents=True, exist_ok=True)
     
@@ -200,7 +201,7 @@ from flask_login import LoginManager
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from config.base import BaseConfig
-from extensions import db, migrate, ma, bcrypt, mail, login_manager, jwt, cors
+from app.extensions import db, migrate, ma, bcrypt, mail, login_manager, jwt, cors
 
 def create_app(config_name='default'):
     app = Flask(__name__)
@@ -217,10 +218,10 @@ def create_app(config_name='default'):
     cors.init_app(app)
 
     # Import models after initializing db
-    from models.user import User
+    from app.models.user import User
 
     # Register blueprints
-    from controllers import bp as main_bp
+    from app.controllers import bp as main_bp
     app.register_blueprint(main_bp)
 
     # Initialize Flask-Masonite with the app
@@ -229,7 +230,7 @@ def create_app(config_name='default'):
         flask_masonite = FlaskMasonite(app)
         
         # Register routes using the unified interface
-        from routes import create_routes
+        from app.routes import create_routes
         routes = create_routes()
         app.register_routes(routes)
         
@@ -375,7 +376,7 @@ def create_user_model_content():
     return '''from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
-from extensions import db  # Using the db instance from extensions
+from app.extensions import db  # Using the db instance from extensions
 
 
 class User(UserMixin, db.Model):
@@ -451,7 +452,7 @@ def create_auth_controller_content():
 from flask import render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models.user import User
-from extensions import db
+from app.extensions import db
 from werkzeug.security import check_password_hash
 
 
@@ -1270,8 +1271,8 @@ class HomeController(Controller):
 
 
 def create_run_content(app_name):
-    return f'''from . import create_app
-from extensions import init_extensions
+    return f'''from app import create_app
+from app.extensions import init_extensions
 
 app = create_app()
 
