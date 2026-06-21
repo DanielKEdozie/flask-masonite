@@ -1,6 +1,6 @@
 from .masonite import Controller, Route, RouteCollection, ResourceRoute, Middleware, register_controllers_from_paths
 from .routing import Router, route, get, post, put, delete, patch
-from .middleware import wrap_with_middleware, AuthMiddleware
+from .middleware import wrap_with_middleware, AuthMiddleware, APIAuthMiddleware
 from .helpers import get_signature, resolve_dependency
 from .helpers_classes import Task, Email, Security
 from .extensions import register_extension, get_extension, initialize_extension, extension_manager
@@ -27,6 +27,7 @@ __all__ = [
     'initialize_extension',
     'extension_manager',
     'AuthMiddleware',
+    'APIAuthMiddleware',
     'Task',
     'Email',
     'Security',

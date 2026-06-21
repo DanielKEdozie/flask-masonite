@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flask_user"
+version = "1.0.0"
+description = "JWT + Flask-Login user management extension for Flask"
+readme = "USAGE.md"
+requires-python = ">=3.8"
+dependencies = [
+    "Flask>=2.0.0",
+    "Flask-SQLAlchemy>=2.5.0",
+    "Flask-Marshmallow>=0.14.0",
+    "Flask-Bcrypt>=0.7.1",
+    "Flask-Login>=0.5.0",
+    "PyJWT>=2.0.0",
+    "marshmallow-sqlalchemy>=0.26.0",
+    "Werkzeug>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "flake8",
+    "black",
+]
+
+[tool.setuptools.packages.find]
+include = ["flask_user*"]

@@ -4,7 +4,7 @@ import click
 from pathlib import Path
 
 
-def create_app_structure(app_name, app_title=None, app_description=None):
+def create_app_structure(app_name, app_title=None, app_description=None, with_storage=None, with_user=None, with_payment=None):
     """
     Create the complete Flask-Masonite application structure with all features.
     
@@ -12,6 +12,9 @@ def create_app_structure(app_name, app_title=None, app_description=None):
         app_name (str): Name of the application to create
         app_title (str): Title of the application (optional, will prompt if not provided)
         app_description (str): Description of the application (optional, will prompt if not provided)
+        with_storage (bool): Include prebuilt flask-storage library
+        with_user (bool): Include prebuilt flask-user library
+        with_payment (bool): Include prebuilt flask-payment library
     """
     # Get app details from user if not provided
     if not app_title:
@@ -25,6 +28,13 @@ def create_app_structure(app_name, app_title=None, app_description=None):
             "App description", 
             default=f"A {app_title} application built with Flask-Masonite"
         )
+
+    if with_storage is None:
+        with_storage = click.confirm("Include prebuilt library 'flask-storage'?", default=True)
+    if with_user is None:
+        with_user = click.confirm("Include prebuilt library 'flask-user'?", default=True)
+    if with_payment is None:
+        with_payment = click.confirm("Include prebuilt library 'flask-payment'?", default=True)
     
     # Create main project directory
     project_dir = Path('.')
@@ -32,6 +42,51 @@ def create_app_structure(app_name, app_title=None, app_description=None):
     # Create inner application directory named after the app
     app_dir = project_dir / app_name
     app_dir.mkdir(exist_ok=True)
+    
+    # Copy prebuilt libraries if selected
+    additional_reqs = []
+    source_libs_dir = Path(__file__).parent / 'libs'
+    
+    if with_storage or with_user or with_payment:
+        (project_dir / 'libs').mkdir(exist_ok=True)
+        
+    import shutil
+    
+    # 1. flask-storage
+    if with_storage:
+        src = source_libs_dir / 'flask-storage'
+        dst = project_dir / 'libs' / 'flask-storage'
+        if src.exists():
+            shutil.copytree(src, dst, ignore=shutil.ignore_patterns('__pycache__', '*.pyc', '.git', 'build', 'dist', '*.egg-info'), dirs_exist_ok=True)
+            additional_reqs.append('./libs/flask-storage')
+        else:
+            additional_reqs.append('git+https://github.com/DanielKEdozie/flask-storage.git')
+    else:
+        additional_reqs.append('git+https://github.com/DanielKEdozie/flask-storage.git')
+        
+    # 2. flask-user
+    if with_user:
+        src = source_libs_dir / 'flask-user'
+        dst = project_dir / 'libs' / 'flask-user'
+        if src.exists():
+            shutil.copytree(src, dst, ignore=shutil.ignore_patterns('__pycache__', '*.pyc', '.git', 'build', 'dist', '*.egg-info'), dirs_exist_ok=True)
+            additional_reqs.append('./libs/flask-user')
+        else:
+            additional_reqs.append('git+https://github.com/DanielKEdozie/flask-user.git')
+    else:
+        additional_reqs.append('git+https://github.com/DanielKEdozie/flask-user.git')
+        
+    # 3. flask-payment
+    if with_payment:
+        src = source_libs_dir / 'flask-payment'
+        dst = project_dir / 'libs' / 'flask-payment'
+        if src.exists():
+            shutil.copytree(src, dst, ignore=shutil.ignore_patterns('__pycache__', '*.pyc', '.git', 'build', 'dist', '*.egg-info'), dirs_exist_ok=True)
+            additional_reqs.append('./libs/flask-payment')
+        else:
+            additional_reqs.append('git+https://github.com/DanielKEdozie/flask-payment.git')
+    else:
+        additional_reqs.append('git+https://github.com/DanielKEdozie/flask-payment.git')
     
     # Create config folder inside the app directory
     (app_dir / 'config').mkdir(exist_ok=True)
@@ -92,12 +147,20 @@ def create_app_structure(app_name, app_title=None, app_description=None):
     (project_dir / 'run.py').write_text(create_run_content(app_name))
     
     # Create requirements.txt at project root level (CWD)
-    (project_dir / 'requirements.txt').write_text(create_requirements_content())
+    (project_dir / 'requirements.txt').write_text(create_requirements_content(additional_reqs))
     
     click.echo(click.style(f"\nFlask-Masonite application '{app_name}' has been created successfully!", fg='green'))
     click.echo(f"\nDirectory structure:")
     click.echo(f"|-- run.py")
     click.echo(f"|-- requirements.txt")
+    if with_storage or with_user or with_payment:
+        click.echo(f"|-- libs/")
+        if with_storage:
+            click.echo(f"|   |-- flask-storage/")
+        if with_user:
+            click.echo(f"|   |-- flask-user/")
+        if with_payment:
+            click.echo(f"|   \\-- flask-payment/")
     click.echo(f"\\-- {app_name}/")
     click.echo(f"    |-- __init__.py")
     click.echo(f"    |-- extensions.py")
@@ -191,33 +254,18 @@ def create_blueprint_structure(blueprint_name, project_root='.'):
 
 def create_app_init_content(app_name):
     return f'''from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from flask_marshmallow import Marshmallow
-from flask_bcrypt import Bcrypt
-from flask_mail import Mail
-from flask_login import LoginManager
-from flask_jwt_extended import JWTManager
-from flask_cors import CORS
 from .config.base import BaseConfig
-from .extensions import db, migrate, ma, bcrypt, mail, login_manager, jwt, cors
+from .extensions import db, init_extensions
 
 def create_app(config_name='default'):
     app = Flask(__name__)
     app.config.from_object(BaseConfig)
     
     # Initialize extensions
-    db.init_app(app)
-    migrate.init_app(app, db)
-    ma.init_app(app)
-    bcrypt.init_app(app)
-    mail.init_app(app)
-    login_manager.init_app(app)
-    jwt.init_app(app)
-    cors.init_app(app)
+    init_extensions(app)
 
     # Import models after initializing db
-    from .models.user import User
+    from .models.user import User, UserAuth
 
     # Register blueprints
     from .controllers import bp as main_bp
@@ -372,78 +420,87 @@ class BaseConfig:
 
 
 def create_user_model_content():
-    return '''from flask_login import UserMixin
-from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
-from ..extensions import db  # Using the db instance from extensions
+    return '''from datetime import datetime
+from flask_login import UserMixin
+from ..extensions import db, bcrypt
 
 
-class User(UserMixin, db.Model):
+class User(db.Model, UserMixin):
     """
-    User model with admin privileges
+    User model representing the user profile.
     """
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
-    first_name = db.Column(db.String(50), nullable=True)
-    last_name = db.Column(db.String(50), nullable=True)
-    phone = db.Column(db.String(20), nullable=True)
-    date_joined = db.Column(db.DateTime, default=datetime.utcnow)
-    last_login = db.Column(db.DateTime, nullable=True)
-    is_active = db.Column(db.Boolean, default=True)
-    is_verified = db.Column(db.Boolean, default=False)
-    is_admin = db.Column(db.Boolean, default=False)  # Admin privilege
-    
-    # Relationships
-    orders = db.relationship('Order', backref='user', lazy=True)
-    reviews = db.relationship('Review', backref='user', lazy=True)
+    first_name = db.Column(db.String(120), nullable=False)
+    last_name = db.Column(db.String(120), nullable=False)
+    email = db.Column(db.String(255), nullable=False, unique=True, index=True)
+    is_admin = db.Column(db.Boolean, nullable=False, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    def __init__(self, username, email, password, first_name=None, last_name=None, phone=None):
-        self.username = username
-        self.email = email
-        self.set_password(password)
-        self.first_name = first_name
-        self.last_name = last_name
-        self.phone = phone
+    # One-to-one relationship with UserAuth
+    auth = db.relationship(
+        'UserAuth',
+        back_populates='user',
+        uselist=False,
+        lazy='joined',
+        cascade='all, delete-orphan'
+    )
 
-    def set_password(self, password):
-        """Hash and set the user's password."""
-        self.password_hash = generate_password_hash(password)
-
-    def check_password(self, password):
-        """Check if the provided password matches the stored hash."""
-        return check_password_hash(self.password_hash, password)
-
-    def toggle_admin(self):
-        """Toggle admin status."""
-        self.is_admin = not self.is_admin
-        db.session.commit()
-
-    def update_last_login(self):
-        """Update the last login timestamp."""
-        self.last_login = datetime.utcnow()
-        db.session.commit()
+    @property
+    def full_name(self) -> str:
+        return f"{self.first_name} {self.last_name}"
 
     def __repr__(self):
-        return f'<User {self.username}>'
+        return f"<User id={self.id} email={self.email}>"
 
     def serialize(self):
         """Serialize the user object for JSON responses."""
         return {
             'id': self.id,
-            'username': self.username,
-            'email': self.email,
             'first_name': self.first_name,
             'last_name': self.last_name,
-            'date_joined': self.date_joined.isoformat() if self.date_joined else None,
-            'last_login': self.last_login.isoformat() if self.last_login else None,
-            'is_active': self.is_active,
-            'is_verified': self.is_verified,
+            'email': self.email,
             'is_admin': self.is_admin,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
+
+
+class UserAuth(db.Model):
+    """
+    Stores hashed credentials for a User.
+    """
+    __tablename__ = 'user_auth'
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('users.id', ondelete='CASCADE'),
+        primary_key=True,
+        nullable=False
+    )
+    _password = db.Column('password', db.String(255), nullable=False)
+
+    user = db.relationship('User', back_populates='auth')
+
+    def __init__(self, user, password):
+        self.user = user
+        self.password = password
+
+    @property
+    def password(self):
+        raise AttributeError('password is a write-only field')
+
+    @password.setter
+    def password(self, plain_text):
+        self._password = bcrypt.generate_password_hash(plain_text).decode('utf-8')
+
+    def verify_password(self, plain_text):
+        return bcrypt.check_password_hash(self._password, plain_text)
+
+    def __repr__(self):
+        return f"<UserAuth user_id={self.user_id}>"
 '''
     
 def create_auth_controller_content():
@@ -1281,8 +1338,8 @@ if __name__ == '__main__':
 '''
 
 
-def create_requirements_content():
-    return '''Flask==2.3.3
+def create_requirements_content(additional_reqs=None):
+    reqs = '''Flask==2.3.3
 flask-masonite
 Flask-SQLAlchemy==3.0.5
 Flask-Marshmallow==0.15.0
@@ -1300,7 +1357,12 @@ bcrypt==4.0.1
 email-validator==2.0.0
 Pillow==10.0.0
 requests==2.31.0
+PyJWT>=2.4
+marshmallow-sqlalchemy>=0.28
 '''
+    if additional_reqs:
+        reqs += '\n'.join(additional_reqs) + '\n'
+    return reqs
 
 
 def create_blueprint_init_content(blueprint_name):

@@ -43,7 +43,7 @@ def test_create_app():
     
     try:
         from flask_masonite.cli import create_app_structure
-        create_app_structure('my_test_app')
+        create_app_structure('my_test_app', with_storage=True, with_user=True, with_payment=True)
         
         # Verify files were created directly inside CWD
         assert (temp_dir / 'run.py').exists(), "run.py was not created in CWD"
@@ -52,6 +52,17 @@ def test_create_app():
         assert (temp_dir / 'my_test_app' / 'extensions.py').exists(), "extensions.py was not created"
         assert (temp_dir / 'my_test_app' / 'routes' / '__init__.py').exists(), "routes/__init__.py was not created"
         
+        # Verify prebuilt libraries were copied
+        assert (temp_dir / 'libs' / 'flask-storage').exists(), "libs/flask-storage was not copied"
+        assert (temp_dir / 'libs' / 'flask-user').exists(), "libs/flask-user was not copied"
+        assert (temp_dir / 'libs' / 'flask-payment').exists(), "libs/flask-payment was not copied"
+        
+        # Verify the generated code compiles successfully
+        import py_compile
+        for py_file in (temp_dir / 'my_test_app').glob('**/*.py'):
+            py_compile.compile(str(py_file), doraise=True)
+        py_compile.compile(str(temp_dir / 'run.py'), doraise=True)
+        print("OK: Compilation test passed: all generated files are syntactically valid!")
         print("OK: All assertions passed: structure is correct!")
         
     finally:

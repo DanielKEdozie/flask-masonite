@@ -57,5 +57,8 @@ Repository = "https://github.com/YOUR_GITHUB_USERNAME/flask-masonite"
 where = ["."]
 include = ["flask_masonite*"]
 
+[tool.setuptools.package-data]
+flask_masonite = ["libs/**/*"]
+
 [project.scripts]
 flask-masonite = "flask_masonite.cli:cli"

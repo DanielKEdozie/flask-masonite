@@ -76,3 +76,22 @@ class AuthMiddleware:
     def after(self, request, response):
         # You can modify the response here if needed
         return response
+
+
+class APIAuthMiddleware:
+    """API Authentication Middleware that enforces token or session authentication using Flask-Login and Flask-User."""
+
+    def before(self, request):
+        # Exclude login and register routes from authentication
+        if request.endpoint and any(p in request.endpoint for p in ['login', 'register']):
+            return None
+            
+        from flask_login import current_user
+        if not current_user or not current_user.is_authenticated:
+            from flask import jsonify
+            return jsonify({'message': 'Authentication required.'}), 401
+            
+        return None
+
+    def after(self, request, response):
+        return response
