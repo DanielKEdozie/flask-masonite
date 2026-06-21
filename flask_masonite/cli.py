@@ -27,15 +27,14 @@ def create_app_structure(app_name, app_title=None, app_description=None):
         )
     
     # Create main project directory
-    project_dir = Path(app_name)
-    project_dir.mkdir(exist_ok=True)
+    project_dir = Path('.')
     
-    # Create config folder at root directory level
-    (project_dir / 'config').mkdir(exist_ok=True)
-    
-    # Create inner app directory
-    app_dir = project_dir / 'app'
+    # Create inner application directory named after the app
+    app_dir = project_dir / app_name
     app_dir.mkdir(exist_ok=True)
+    
+    # Create config folder inside the app directory
+    (app_dir / 'config').mkdir(exist_ok=True)
     
     # Create application subdirectories inside the app directory
     (app_dir / 'controllers').mkdir(exist_ok=True)
@@ -49,7 +48,6 @@ def create_app_structure(app_name, app_title=None, app_description=None):
     (app_dir / 'routes').mkdir(exist_ok=True)
     (app_dir / 'helpers').mkdir(exist_ok=True)
     (app_dir / 'migrations').mkdir(exist_ok=True)
-    (app_dir / 'extensions').mkdir(exist_ok=True)
     
     # Create __init__.py files for the app
     (app_dir / '__init__.py').write_text(create_app_init_content(app_name))
@@ -58,13 +56,15 @@ def create_app_structure(app_name, app_title=None, app_description=None):
     (app_dir / 'forms' / '__init__.py').write_text('')
     (app_dir / 'routes' / '__init__.py').write_text(create_routes_init_content())
     (app_dir / 'helpers' / '__init__.py').write_text(create_helpers_init_content())
-    (app_dir / 'extensions' / '__init__.py').write_text(create_extensions_content())
     
-    # Create __init__.py files for root config directory
-    (project_dir / 'config' / '__init__.py').write_text('')
+    # Create __init__.py files for config directory
+    (app_dir / 'config' / '__init__.py').write_text('')
     
-    # Create base config at project root level
-    (project_dir / 'config' / 'base.py').write_text(create_base_config_content())
+    # Create base config
+    (app_dir / 'config' / 'base.py').write_text(create_base_config_content(app_name))
+    
+    # Create extensions file as a single Python file
+    (app_dir / 'extensions.py').write_text(create_extensions_content())
     
     # Create model files
     (app_dir / 'models' / 'user.py').write_text(create_user_model_content())
@@ -88,38 +88,36 @@ def create_app_structure(app_name, app_title=None, app_description=None):
     # Create CSS file
     (app_dir / 'static' / 'css' / 'style.css').write_text(create_css_content())
     
-    # Create run.py at project root level
+    # Create run.py at project root level (CWD)
     (project_dir / 'run.py').write_text(create_run_content(app_name))
     
-    # Create requirements.txt at project root level
+    # Create requirements.txt at project root level (CWD)
     (project_dir / 'requirements.txt').write_text(create_requirements_content())
     
     click.echo(click.style(f"\nFlask-Masonite application '{app_name}' has been created successfully!", fg='green'))
     click.echo(f"\nDirectory structure:")
-    click.echo(f"{app_name}/")
     click.echo(f"|-- run.py")
     click.echo(f"|-- requirements.txt")
-    click.echo(f"|-- config/")
-    click.echo(f"|   |-- __init__.py")
-    click.echo(f"|   \\\\-- base.py")
-    click.echo(f"\\\\-- app/")
+    click.echo(f"\\-- {app_name}/")
     click.echo(f"    |-- __init__.py")
+    click.echo(f"    |-- extensions.py")
+    click.echo(f"    |-- config/")
+    click.echo(f"    |   |-- __init__.py")
+    click.echo(f"    |   \\-- base.py")
     click.echo(f"    |-- routes/")
-    click.echo(f"    |   \\\\-- __init__.py")
+    click.echo(f"    |   \\-- __init__.py")
     click.echo(f"    |-- helpers/")
-    click.echo(f"    |   \\\\-- __init__.py")
-    click.echo(f"    |-- extensions/")
-    click.echo(f"    |   \\\\-- __init__.py")
+    click.echo(f"    |   \\-- __init__.py")
     click.echo(f"    |-- controllers/")
     click.echo(f"    |   |-- __init__.py")
     click.echo(f"    |   |-- home_controller.py")
-    click.echo(f"    |   \\\\-- auth_controller.py")
+    click.echo(f"    |   \\-- auth_controller.py")
     click.echo(f"    |-- models/")
     click.echo(f"    |   |-- __init__.py")
-    click.echo(f"    |   \\\\-- user.py")
+    click.echo(f"    |   \\-- user.py")
     click.echo(f"    |-- forms/")
     click.echo(f"    |   |-- __init__.py")
-    click.echo(f"    |   \\\\-- auth_forms.py")
+    click.echo(f"    |   \\-- auth_forms.py")
     click.echo(f"    |-- templates/")
     click.echo(f"    |   |-- base.html")
     click.echo(f"    |   |-- index.html")
@@ -127,13 +125,13 @@ def create_app_structure(app_name, app_title=None, app_description=None):
     click.echo(f"    |   |-- signup.html")
     click.echo(f"    |   |-- profile.html")
     click.echo(f"    |   |-- dashboard.html")
-    click.echo(f"    |   \\\\-- docs.html")
+    click.echo(f"    |   \\-- docs.html")
     click.echo(f"    |-- static/")
     click.echo(f"    |   |-- css/")
-    click.echo(f"    |   |   \\\\-- style.css")
+    click.echo(f"    |   |   \\-- style.css")
     click.echo(f"    |   |-- js/")
-    click.echo(f"    |   \\\\-- images/")
-    click.echo(f"    \\\\-- migrations/")
+    click.echo(f"    |   \\-- images/")
+    click.echo(f"    \\-- migrations/")
 
 
 def create_blueprint_structure(blueprint_name, project_root='.'):
@@ -145,12 +143,13 @@ def create_blueprint_structure(blueprint_name, project_root='.'):
         project_root (str): Root directory of the project (default is current directory)
     """
     project_dir = Path(project_root)
-    app_dir = project_dir / 'app'
-    
-    if not app_dir.exists():
-        click.echo(click.style(f"Error: Could not find app directory in {project_root}", fg='red'))
+    # Find the app package directory (any directory containing '__init__.py' and 'controllers/')
+    app_dirs = [d for d in project_dir.iterdir() if d.is_dir() and (d / 'controllers').exists() and (d / '__init__.py').exists()]
+    if not app_dirs:
+        click.echo(click.style(f"Error: Could not find application package in {project_root}", fg='red'))
         return
     
+    app_dir = app_dirs[0]
     blueprint_dir = app_dir / 'blueprints' / blueprint_name
     blueprint_dir.mkdir(parents=True, exist_ok=True)
     
@@ -200,8 +199,8 @@ from flask_mail import Mail
 from flask_login import LoginManager
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
-from config.base import BaseConfig
-from app.extensions import db, migrate, ma, bcrypt, mail, login_manager, jwt, cors
+from .config.base import BaseConfig
+from .extensions import db, migrate, ma, bcrypt, mail, login_manager, jwt, cors
 
 def create_app(config_name='default'):
     app = Flask(__name__)
@@ -218,10 +217,10 @@ def create_app(config_name='default'):
     cors.init_app(app)
 
     # Import models after initializing db
-    from app.models.user import User
+    from .models.user import User
 
     # Register blueprints
-    from app.controllers import bp as main_bp
+    from .controllers import bp as main_bp
     app.register_blueprint(main_bp)
 
     # Initialize Flask-Masonite with the app
@@ -230,7 +229,7 @@ def create_app(config_name='default'):
         flask_masonite = FlaskMasonite(app)
         
         # Register routes using the unified interface
-        from app.routes import create_routes
+        from .routes import create_routes
         routes = create_routes()
         app.register_routes(routes)
         
@@ -349,8 +348,8 @@ def create_helpers_init_content():
 '''
 
 
-def create_base_config_content():
-    return '''import os
+def create_base_config_content(app_name):
+    return f'''import os
 
 
 class BaseConfig:
@@ -360,7 +359,7 @@ class BaseConfig:
     
     # Controller paths configuration
     CONTROLLER_PATHS = [
-        'app.controllers',
+        '{app_name}.controllers',
     ]
     
     # Mail configuration
@@ -376,7 +375,7 @@ def create_user_model_content():
     return '''from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
-from app.extensions import db  # Using the db instance from extensions
+from ..extensions import db  # Using the db instance from extensions
 
 
 class User(UserMixin, db.Model):
@@ -451,8 +450,8 @@ def create_auth_controller_content():
     return '''from flask_masonite import Controller
 from flask import render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
-from app.models.user import User
-from app.extensions import db
+from ..models.user import User
+from ..extensions import db
 from werkzeug.security import check_password_hash
 
 
@@ -523,7 +522,7 @@ def create_auth_forms_content():
     return '''from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField
 from wtforms.validators import DataRequired, Email, EqualTo, Length
-from app.models.user import User
+from ..models.user import User
 
 
 class LoginForm(FlaskForm):
@@ -1248,7 +1247,7 @@ def init_extensions(app):
     
     @login_manager.user_loader
     def load_user(user_id):
-        from app.models.user import User
+        from .models.user import User
         return User.query.get(int(user_id))
 '''
 
@@ -1271,8 +1270,8 @@ class HomeController(Controller):
 
 
 def create_run_content(app_name):
-    return f'''from app import create_app
-from app.extensions import init_extensions
+    return f'''from {app_name} import create_app
+from {app_name}.extensions import init_extensions
 
 app = create_app()
 
@@ -1438,26 +1437,26 @@ def create_controller_structure(name, directory=None, project_root='.'):
     if directory:
         base_dir = project_dir / directory
     else:
-        # Try to resolve CONTROLLER_PATHS from config/base.py
-        config_path = project_dir / 'config' / 'base.py'
+        # Try to resolve CONTROLLER_PATHS from config/base.py located inside the app package
+        config_paths = list(project_dir.glob('*/config/base.py'))
         resolved_path = None
-        if config_path.exists():
+        if config_paths and config_paths[0].exists():
             import re
-            content = config_path.read_text()
+            content = config_paths[0].read_text()
             # Search for CONTROLLER_PATHS = [ ... 'path' ... ]
             match = re.search(r"CONTROLLER_PATHS\s*=\s*\[\s*['\"]([^'\"]+)['\"]", content)
             if match:
-                package_path = match.group(1) # e.g. 'app.controllers'
-                # Convert package dot notation to directory path (e.g. app/controllers)
+                package_path = match.group(1) # e.g. 'myapp.controllers'
+                # Convert package dot notation to directory path (e.g. myapp/controllers)
                 resolved_path = package_path.replace('.', '/')
                 
         if resolved_path:
             base_dir = project_dir / resolved_path
         else:
-            # Default fallback directory (best practice: app/controllers)
-            # Check if inner app directory exists, if so use app/controllers, otherwise controllers
-            if (project_dir / 'app').exists():
-                base_dir = project_dir / 'app' / 'controllers'
+            # Fallback: dynamically find a package containing a controllers/ directory
+            app_dirs = [d for d in project_dir.iterdir() if d.is_dir() and (d / 'controllers').exists()]
+            if app_dirs:
+                base_dir = app_dirs[0] / 'controllers'
             else:
                 base_dir = project_dir / 'controllers'
 
