@@ -13,9 +13,6 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/YOUR_GITHUB_USERNAME/flask-masonite",
     packages=find_packages(),
-    package_data={
-        "flask_masonite": ["libs/**/*"],
-    },
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Environment :: Web Environment",

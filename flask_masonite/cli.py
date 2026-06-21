@@ -4,7 +4,7 @@ import click
 from pathlib import Path
 
 
-def create_app_structure(app_name, app_title=None, app_description=None, with_storage=None, with_user=None, with_payment=None):
+def create_app_structure(app_name, app_title=None, app_description=None, with_storage=None, with_payment=None):
     """
     Create the complete Flask-Masonite application structure with all features.
     
@@ -13,7 +13,6 @@ def create_app_structure(app_name, app_title=None, app_description=None, with_st
         app_title (str): Title of the application (optional, will prompt if not provided)
         app_description (str): Description of the application (optional, will prompt if not provided)
         with_storage (bool): Include prebuilt flask-storage library
-        with_user (bool): Include prebuilt flask-user library
         with_payment (bool): Include prebuilt flask-payment library
     """
     # Get app details from user if not provided
@@ -31,8 +30,6 @@ def create_app_structure(app_name, app_title=None, app_description=None, with_st
 
     if with_storage is None:
         with_storage = click.confirm("Include prebuilt library 'flask-storage'?", default=True)
-    if with_user is None:
-        with_user = click.confirm("Include prebuilt library 'flask-user'?", default=True)
     if with_payment is None:
         with_payment = click.confirm("Include prebuilt library 'flask-payment'?", default=True)
     
@@ -43,49 +40,18 @@ def create_app_structure(app_name, app_title=None, app_description=None, with_st
     app_dir = project_dir / app_name
     app_dir.mkdir(exist_ok=True)
     
-    # Copy prebuilt libraries if selected
+    # Build list of packages to install via requirements.txt
     additional_reqs = []
-    source_libs_dir = Path(__file__).parent / 'libs'
     
-    if with_storage or with_user or with_payment:
-        (project_dir / 'libs').mkdir(exist_ok=True)
-        
-    import shutil
+    # Always include flask-user
+    additional_reqs.append('git+https://github.com/DanielKEdozie/flask-user.git')
     
-    # 1. flask-storage
+    # Optionally include flask-storage
     if with_storage:
-        src = source_libs_dir / 'flask-storage'
-        dst = project_dir / 'libs' / 'flask-storage'
-        if src.exists():
-            shutil.copytree(src, dst, ignore=shutil.ignore_patterns('__pycache__', '*.pyc', '.git', 'build', 'dist', '*.egg-info'), dirs_exist_ok=True)
-            additional_reqs.append('./libs/flask-storage')
-        else:
-            additional_reqs.append('git+https://github.com/DanielKEdozie/flask-storage.git')
-    else:
         additional_reqs.append('git+https://github.com/DanielKEdozie/flask-storage.git')
         
-    # 2. flask-user
-    if with_user:
-        src = source_libs_dir / 'flask-user'
-        dst = project_dir / 'libs' / 'flask-user'
-        if src.exists():
-            shutil.copytree(src, dst, ignore=shutil.ignore_patterns('__pycache__', '*.pyc', '.git', 'build', 'dist', '*.egg-info'), dirs_exist_ok=True)
-            additional_reqs.append('./libs/flask-user')
-        else:
-            additional_reqs.append('git+https://github.com/DanielKEdozie/flask-user.git')
-    else:
-        additional_reqs.append('git+https://github.com/DanielKEdozie/flask-user.git')
-        
-    # 3. flask-payment
+    # Optionally include flask-payment
     if with_payment:
-        src = source_libs_dir / 'flask-payment'
-        dst = project_dir / 'libs' / 'flask-payment'
-        if src.exists():
-            shutil.copytree(src, dst, ignore=shutil.ignore_patterns('__pycache__', '*.pyc', '.git', 'build', 'dist', '*.egg-info'), dirs_exist_ok=True)
-            additional_reqs.append('./libs/flask-payment')
-        else:
-            additional_reqs.append('git+https://github.com/DanielKEdozie/flask-payment.git')
-    else:
         additional_reqs.append('git+https://github.com/DanielKEdozie/flask-payment.git')
     
     # Create config folder inside the app directory
@@ -153,14 +119,6 @@ def create_app_structure(app_name, app_title=None, app_description=None, with_st
     click.echo(f"\nDirectory structure:")
     click.echo(f"|-- run.py")
     click.echo(f"|-- requirements.txt")
-    if with_storage or with_user or with_payment:
-        click.echo(f"|-- libs/")
-        if with_storage:
-            click.echo(f"|   |-- flask-storage/")
-        if with_user:
-            click.echo(f"|   |-- flask-user/")
-        if with_payment:
-            click.echo(f"|   \\-- flask-payment/")
     click.echo(f"\\-- {app_name}/")
     click.echo(f"    |-- __init__.py")
     click.echo(f"    |-- extensions.py")
@@ -1463,9 +1421,17 @@ def cli():
 @click.argument('app_name')
 @click.option('--title', '-t', help='Title of the application')
 @click.option('--description', '-d', help='Description of the application')
-def create_app(app_name, title, description):
+@click.option('--with-storage/--no-storage', default=None, help='Include prebuilt flask-storage library')
+@click.option('--with-payment/--no-payment', default=None, help='Include prebuilt flask-payment library')
+def create_app(app_name, title, description, with_storage, with_payment):
     """Create a new Flask-Masonite application"""
-    create_app_structure(app_name, app_title=title, app_description=description)
+    create_app_structure(
+        app_name, 
+        app_title=title, 
+        app_description=description,
+        with_storage=with_storage,
+        with_payment=with_payment
+    )
 
 
 @cli.command()

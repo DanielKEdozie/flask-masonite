@@ -43,7 +43,7 @@ def test_create_app():
     
     try:
         from flask_masonite.cli import create_app_structure
-        create_app_structure('my_test_app', with_storage=True, with_user=True, with_payment=True)
+        create_app_structure('my_test_app', with_storage=True, with_payment=True)
         
         # Verify files were created directly inside CWD
         assert (temp_dir / 'run.py').exists(), "run.py was not created in CWD"
@@ -52,10 +52,15 @@ def test_create_app():
         assert (temp_dir / 'my_test_app' / 'extensions.py').exists(), "extensions.py was not created"
         assert (temp_dir / 'my_test_app' / 'routes' / '__init__.py').exists(), "routes/__init__.py was not created"
         
-        # Verify prebuilt libraries were copied
-        assert (temp_dir / 'libs' / 'flask-storage').exists(), "libs/flask-storage was not copied"
-        assert (temp_dir / 'libs' / 'flask-user').exists(), "libs/flask-user was not copied"
-        assert (temp_dir / 'libs' / 'flask-payment').exists(), "libs/flask-payment was not copied"
+        # Verify prebuilt libraries were NOT copied
+        assert not (temp_dir / 'libs').exists(), "libs directory should not be created in project root"
+        assert not (temp_dir / 'my_test_app' / 'libs').exists(), "libs directory should not be created in app folder"
+        
+        # Verify Git URL requirements in requirements.txt
+        reqs_content = (temp_dir / 'requirements.txt').read_text()
+        assert 'git+https://github.com/DanielKEdozie/flask-user.git' in reqs_content, "flask-user Git URL not found in requirements.txt"
+        assert 'git+https://github.com/DanielKEdozie/flask-storage.git' in reqs_content, "flask-storage Git URL not found in requirements.txt"
+        assert 'git+https://github.com/DanielKEdozie/flask-payment.git' in reqs_content, "flask-payment Git URL not found in requirements.txt"
         
         # Verify the generated code compiles successfully
         import py_compile
