@@ -197,12 +197,12 @@ class FlaskUser:
 
         auth_method = app.config.get('USER_AUTH_METHOD', 'both')
 
-        if auth_method in ('session_cookie', 'both'):
+        if auth_method in ('session', 'session_cookie', 'both'):
             @login_manager.user_loader
             def _user_loader(user_id: str):
                 return db.session.get(user_model, int(user_id))
 
-        if auth_method in ('token_auth', 'both'):
+        if auth_method in ('token', 'token_auth', 'both'):
             @login_manager.request_loader
             def _request_loader(req):
                 header = req.headers.get('Authorization', '')
@@ -213,7 +213,7 @@ class FlaskUser:
         @login_manager.unauthorized_handler
         def _unauthorized():
             from flask import redirect, request as req, url_for
-            if req.path.startswith('/api/') or auth_method == 'token_auth':
+            if req.path.startswith('/api/') or auth_method in ('token', 'token_auth'):
                 return {'message': 'Authentication required.'}, 401
             
             # Check if 'login' or 'auth.login' is registered in app view functions

@@ -410,6 +410,10 @@ class BaseConfig:
         '{app_name}.controllers',
     ]
     
+    # Flask-User configuration
+    USER_AUTH_METHOD = os.environ.get('USER_AUTH_METHOD', 'both')  # 'session' (for web), 'token' (for API), or 'both'
+    JWT_REFRESH_SECRET = os.environ.get('JWT_REFRESH_SECRET', 'dev-refresh-secret-key-change-in-production')
+    
     # Mail configuration
     MAIL_SERVER = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
     MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
