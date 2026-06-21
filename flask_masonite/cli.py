@@ -1411,5 +1411,147 @@ def create_blueprint(blueprint_name, project_root):
     create_blueprint_structure(blueprint_name, project_root)
 
 
+def to_pascal_case(s):
+    if not s:
+        return s
+    # Convert string to PascalCase (e.g., user_controller -> UserController)
+    s = s.replace('-', '_')
+    parts = [p for p in s.split('_') if p]
+    return ''.join(p[0].upper() + p[1:] for p in parts)
+
+
+def to_snake_case(s):
+    # Convert CamelCase/PascalCase to snake_case (e.g., UserController -> user_controller)
+    import re
+    s = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', s)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s).lower()
+
+
+def create_controller_structure(name, directory=None, project_root='.'):
+    project_dir = Path(project_root)
+    
+    # Strip any trailing '.py' if provided
+    if name.endswith('.py'):
+        name = name[:-3]
+        
+    # Resolve the base directory
+    if directory:
+        base_dir = project_dir / directory
+    else:
+        # Try to resolve CONTROLLER_PATHS from config/base.py
+        config_path = project_dir / 'config' / 'base.py'
+        resolved_path = None
+        if config_path.exists():
+            import re
+            content = config_path.read_text()
+            # Search for CONTROLLER_PATHS = [ ... 'path' ... ]
+            match = re.search(r"CONTROLLER_PATHS\s*=\s*\[\s*['\"]([^'\"]+)['\"]", content)
+            if match:
+                package_path = match.group(1) # e.g. 'app.controllers'
+                # Convert package dot notation to directory path (e.g. app/controllers)
+                resolved_path = package_path.replace('.', '/')
+                
+        if resolved_path:
+            base_dir = project_dir / resolved_path
+        else:
+            # Default fallback directory (best practice: app/controllers)
+            # Check if inner app directory exists, if so use app/controllers, otherwise controllers
+            if (project_dir / 'app').exists():
+                base_dir = project_dir / 'app' / 'controllers'
+            else:
+                base_dir = project_dir / 'controllers'
+
+    # Handle nested paths in the controller name (e.g. auth/LoginController or auth.LoginController)
+    name = name.replace('.', '/')
+    input_parts = [p for p in name.split('/') if p]
+    
+    # Base directory relative parts (e.g. ['app', 'controllers'])
+    try:
+        base_rel_parts = base_dir.relative_to(project_dir).parts
+    except ValueError:
+        base_rel_parts = ()
+        
+    # Check if input_parts starts with base_rel_parts, and strip if so
+    if len(input_parts) >= len(base_rel_parts):
+        starts_with_base = True
+        for i in range(len(base_rel_parts)):
+            if input_parts[i].lower() != base_rel_parts[i].lower():
+                starts_with_base = False
+                break
+        if starts_with_base:
+            input_parts = input_parts[len(base_rel_parts):]
+            
+    if not input_parts:
+        click.echo(click.style("Error: Invalid controller name.", fg='red'))
+        return
+        
+    controller_base_name = input_parts[-1]
+    subdirs = input_parts[:-1]
+    
+    # Normalize class name and file name
+    if not controller_base_name.lower().endswith('controller'):
+        controller_class_name = to_pascal_case(controller_base_name) + 'Controller'
+    else:
+        controller_class_name = to_pascal_case(controller_base_name)
+        
+    controller_file_name = to_snake_case(controller_class_name) + '.py'
+    
+    # Target directory path
+    target_dir = base_dir
+    for part in subdirs:
+        target_dir = target_dir / part
+
+    # Create target directories
+    target_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create __init__.py files in newly created folders up to base_dir
+    current_path = base_dir
+    for part in subdirs:
+        current_path = current_path / part
+        init_file = current_path / '__init__.py'
+        if not init_file.exists():
+            init_file.write_text('')
+            
+    # File path
+    file_path = target_dir / controller_file_name
+    
+    if file_path.exists():
+        click.echo(click.style(f"Error: Controller file '{file_path}' already exists.", fg='red'))
+        return
+        
+    # Controller boilerplate content
+    boilerplate = f'''from flask_masonite import Controller
+
+class {controller_class_name}(Controller):
+    def index(self):
+        return {{"message": "Hello from {controller_class_name}"}}
+'''
+
+    file_path.write_text(boilerplate)
+    
+    # Expose in package's __init__.py if it exists
+    init_path = target_dir / '__init__.py'
+    if init_path.exists():
+        init_content = init_path.read_text()
+        import_stmt = f"from .{to_snake_case(controller_class_name)} import {controller_class_name}"
+        if import_stmt not in init_content:
+            if init_content.strip():
+                new_init_content = init_content.strip() + f"\n{import_stmt}\n"
+            else:
+                new_init_content = f"{import_stmt}\n"
+            init_path.write_text(new_init_content)
+            
+    click.echo(click.style(f"Controller '{controller_class_name}' successfully created at {file_path}", fg='green'))
+
+
+@cli.command()
+@click.argument('name')
+@click.option('--directory', '-d', help='The directory to create the controller in')
+@click.option('--project-root', default='.', help='Root directory of the project (default: current directory)')
+def create_controller(name, directory, project_root):
+    """Create a new Flask-Masonite controller"""
+    create_controller_structure(name, directory, project_root)
+
+
 if __name__ == '__main__':
     cli()
