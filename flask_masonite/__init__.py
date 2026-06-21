@@ -1,4 +1,4 @@
-from .masonite import Controller, Route, RouteCollection, ResourceRoute, Middleware, register_controllers_from_paths
+from .masonite import Controller, Route, RouteCollection, RouteGroup, ResourceRoute, Middleware, register_controllers_from_paths
 from .routing import Router, route, get, post, put, delete, patch
 from .middleware import wrap_with_middleware, AuthMiddleware, APIAuthMiddleware
 from .helpers import get_signature, resolve_dependency
@@ -9,6 +9,7 @@ __all__ = [
     'Controller',
     'Route',
     'RouteCollection',
+    'RouteGroup',
     'ResourceRoute',
     'Middleware',
     'Router',

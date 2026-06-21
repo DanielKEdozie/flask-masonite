@@ -3,7 +3,7 @@ Flask-Masonite: A Masonite-inspired routing and controller engine for Flask appl
 """
 
 from functools import wraps
-from flask import request, jsonify, g
+from flask import request, jsonify, g, abort
 from .helpers import get_signature, resolve_dependency
 import inspect
 
@@ -30,22 +30,29 @@ class Controller(metaclass=ControllerMeta):
     
     Controllers are used to group related request handling logic. Each controller
     method represents a specific endpoint or action.
-    
-    Example:
-    >>> from flask_masonite import Controller
-    
-    >>> class UserController(Controller):
-    ...     def index(self):
-    ...         return {'message': 'Hello World'}
-    ...     
-    ...     def show(self, id):
-    ...         return {'id': id, 'name': f'User {id}'}
     """
+    _registry = {}
+    _bindings = {}
 
     def __init__(self):
+        self.request = request
         self.middleware = []
         self.before_middleware = []
         self.after_middleware = []
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        # Register the class name in various formats (case-insensitive)
+        name = cls.__name__
+        cls._registry[name] = cls
+        cls._registry[name.lower()] = cls
+        
+        # Also register with typical suffixes removed (e.g. VendorController -> vendor)
+        name_lower = name.lower()
+        for suffix in ('controller', 'route', 'view'):
+            if name_lower.endswith(suffix) and name_lower != suffix:
+                cls._registry[name_lower[:-len(suffix)]] = cls
+                break
 
     @classmethod
     def get_controllers(cls):
@@ -54,16 +61,99 @@ class Controller(metaclass=ControllerMeta):
         """
         return ControllerMeta.controllers
 
+    @classmethod
+    def bind(cls, key, resolver):
+        """
+        Registers a dependency injection binding.
+        key: class type or string name.
+        resolver: a class instance, factory function (callable), or a class.
+        """
+        cls._bindings[key] = resolver
+
+    @classmethod
+    def as_view(cls, action, name=None):
+        """
+        Creates a Flask-compatible view function that instantiates the controller
+        and executes the specified action (method).
+        """
+        from .middleware import wrap_with_middleware
+        def view(*args, **kwargs):
+            from inspect import signature
+            # Resolve parameters for __init__ using Dependency Injection
+            init_sig = signature(cls.__init__)
+            init_kwargs = {}
+            for param_name, param in init_sig.parameters.items():
+                if param_name in ('self', 'args', 'kwargs'):
+                    continue
+                
+                annotation = param.annotation
+                val = resolve_dependency(annotation, param_name)
+                if val is not None:
+                    init_kwargs[param_name] = val
+            
+            instance = cls(**init_kwargs)
+            instance.request = request
+            
+            # Execute action
+            if not hasattr(instance, action):
+                abort(404, description=f"Action '{action}' not found on controller '{cls.__name__}'")
+            
+            handler_func = getattr(instance, action)
+            sig = get_signature(handler_func)
+            
+            # Resolve parameters using Dependency Injection
+            resolved_kwargs = {}
+            for param_name, param in sig.parameters.items():
+                if param_name == 'self':
+                    continue
+                
+                annotation = param.annotation
+                val = resolve_dependency(annotation, param_name, kwargs)
+                if val is not None:
+                    resolved_kwargs[param_name] = val
+                elif param_name in kwargs:
+                    resolved_kwargs[param_name] = kwargs[param_name]
+            
+            # Hook before_filter: runs before executing the action
+            if hasattr(instance, 'before_filter'):
+                response = instance.before_filter(action, *args, **kwargs)
+                if response is not None:
+                    return response
+            
+            # Call handler with resolved arguments
+            response = handler_func(*args, **resolved_kwargs)
+            
+            # Hook after_filter: runs after executing the action, allowing response modification
+            if hasattr(instance, 'after_filter'):
+                response = instance.after_filter(action, response)
+                
+            return response
+            
+        # Set view.__name__ so Flask can register the endpoint properly (dots are replaced with underscores)
+        view_name = name or f"{cls.__name__.lower()}_{action}"
+        view.__name__ = view_name.replace('.', '_')
+
+        # Apply class-level middleware if defined
+        if hasattr(cls, 'middleware') and cls.middleware:
+            view = wrap_with_middleware(view, cls.middleware, action=action)
+
+        # Apply class-level decorators (like Flask MethodView decorators attribute)
+        if hasattr(cls, 'decorators') and cls.decorators:
+            for decorator in cls.decorators:
+                view = decorator(view)
+
+        return view
+
     def dispatch(self, method_name, *args, **kwargs):
         """
         Dispatch a method call with dependency injection.
         """
         method = getattr(self, method_name)
-        signature = inspect.signature(method)
+        sig = inspect.signature(method)
         
         # Resolve dependencies based on annotations
         resolved_args = []
-        for param in signature.parameters.values():
+        for param in sig.parameters.values():
             if param.annotation != param.empty:
                 resolved_arg = resolve_dependency(param.annotation)
                 if resolved_arg is not None:
@@ -176,13 +266,22 @@ class Route:
             prefix: URL prefix to add to all routes
             name_prefix: Name prefix to add to all route names
         """
-        grouped_routes = []
-        for route in routes:
-            # Create new route with prefixed path
-            new_path = f"{prefix}{route.path}" if prefix else route.path
-            new_name = f"{name_prefix}.{route.name}" if name_prefix and route.name else route.name
-            new_route = cls(new_path, route.handler, route.methods, new_name)
-            grouped_routes.append(new_route)
+        grouped_routes = RouteGroup()
+        for item in routes:
+            if isinstance(item, list):
+                # Recursively group nested list of routes
+                nested_grouped = cls.group(item, prefix=prefix, name_prefix=name_prefix)
+                grouped_routes.append(nested_grouped)
+            elif isinstance(item, Route):
+                # Create new route with prefixed path
+                new_path = f"{prefix}{item.path}" if prefix else item.path
+                new_name = f"{name_prefix}.{item.name}" if name_prefix and item.name else item.name
+                new_route = cls(new_path, item.handler, item.methods, new_name)
+                # Copy existing middleware
+                new_route._before_middleware = list(item._before_middleware)
+                new_route._after_middleware = list(item._after_middleware)
+                new_route._conditional_middleware = list(item._conditional_middleware)
+                grouped_routes.append(new_route)
         return grouped_routes
 
     def middleware(self, middleware_class, **options):
@@ -323,6 +422,45 @@ class RouteCollection:
         return self
 
 
+class RouteGroup(list):
+    """
+    A list subclass that represents a group of routes.
+    Allows applying middleware, before and after callbacks to all routes in the group fluently.
+    """
+    def middleware(self, middleware_class, **options):
+        """Add middleware to all routes in this group."""
+        def apply(routes):
+            for route in routes:
+                if isinstance(route, Route):
+                    route.middleware(middleware_class, **options)
+                elif isinstance(route, list):
+                    apply(route)
+        apply(self)
+        return self
+
+    def before(self, func):
+        """Add a before middleware function to all routes in this group."""
+        def apply(routes):
+            for route in routes:
+                if isinstance(route, Route):
+                    route.before(func)
+                elif isinstance(route, list):
+                    apply(route)
+        apply(self)
+        return self
+
+    def after(self, func):
+        """Add an after middleware function to all routes in this group."""
+        def apply(routes):
+            for route in routes:
+                if isinstance(route, Route):
+                    route.after(func)
+                elif isinstance(route, list):
+                    apply(route)
+        apply(self)
+        return self
+
+
 class ResourceRoute(Route):
     """
     Specialized route class for resource-based routing.
@@ -366,17 +504,22 @@ class Middleware:
         return response
 
 
-def register_controllers_from_paths(app, controller_paths):
+def register_controllers_from_paths(app, controller_paths=None):
     """
     Register controllers from specified module paths.
     
     Args:
-        app: Flask application instance
+        app: Flask application instance or list of module paths
         controller_paths: List of module paths to import controllers from
     """
     import importlib
     
-    for path in controller_paths:
+    if controller_paths is None:
+        paths_to_register = app
+    else:
+        paths_to_register = controller_paths
+        
+    for path in paths_to_register:
         try:
             importlib.import_module(path)
         except ImportError as e:
