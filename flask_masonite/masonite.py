@@ -398,6 +398,8 @@ class RouteCollection:
     
     def register(self, app):
         """Register all routes with the given Flask app."""
+        blueprints = {}
+        
         for route in self.routes:
             # Create a Flask-compatible view function
             def make_view(route_ref=route):
@@ -407,13 +409,40 @@ class RouteCollection:
             
             view_func = make_view(route)
             
-            # Register the route with Flask
-            app.add_url_rule(
-                rule=route.path,
-                endpoint=route.name or f"{route.handler.replace('@', '_')}",
-                view_func=view_func,
-                methods=route.methods
-            )
+            endpoint_name = route.name or f"{route.handler.replace('@', '_')}"
+            
+            if '.' in endpoint_name:
+                # Split by the last dot to get blueprint name and inner endpoint name
+                parts = endpoint_name.rsplit('.', 1)
+                bp_name = parts[0]
+                inner_endpoint = parts[1]
+                
+                # Replace any remaining dots in the blueprint name with underscores (nested blueprint names)
+                bp_name_normalized = bp_name.replace('.', '_')
+                
+                if bp_name_normalized not in blueprints:
+                    from flask import Blueprint
+                    blueprints[bp_name_normalized] = Blueprint(bp_name_normalized, __name__)
+                
+                bp = blueprints[bp_name_normalized]
+                bp.add_url_rule(
+                    rule=route.path,
+                    endpoint=inner_endpoint,
+                    view_func=view_func,
+                    methods=route.methods
+                )
+            else:
+                # Register directly on the app
+                app.add_url_rule(
+                    rule=route.path,
+                    endpoint=endpoint_name,
+                    view_func=view_func,
+                    methods=route.methods
+                )
+                
+        # Register all dynamically created blueprints with the Flask app
+        for bp in blueprints.values():
+            app.register_blueprint(bp)
     
     def resource(self, path, controller):
         """Add a resource route to the collection."""
