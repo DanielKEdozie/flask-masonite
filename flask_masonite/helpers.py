@@ -66,10 +66,11 @@ def resolve_dependency(type_, param_name=None, route_kwargs=None):
         return None
 
     # 1. Custom Bindings from Controller
-    annotation_name = getattr(annotation, '__name__', str(annotation))
+    from .masonite import Controller
+    annotation_name = getattr(type_, '__name__', str(type_))
     resolver = None
-    if annotation in Controller._bindings:
-        resolver = Controller._bindings[annotation]
+    if type_ in Controller._bindings:
+        resolver = Controller._bindings[type_]
     elif annotation_name in Controller._bindings:
         resolver = Controller._bindings[annotation_name]
 
@@ -79,53 +80,53 @@ def resolve_dependency(type_, param_name=None, route_kwargs=None):
         return resolver
 
     # 2. Flask Request
-    if annotation_name == 'Request' or 'Request' in str(annotation):
+    if annotation_name == 'Request' or 'Request' in str(type_):
         return request
 
     # 3. SQLAlchemy
-    if annotation_name == 'SQLAlchemy' or 'SQLAlchemy' in str(annotation):
+    if annotation_name == 'SQLAlchemy' or 'SQLAlchemy' in str(type_):
         if db is None:
             return None  # Return None instead of raising an error
         return db
 
     # 3.1 Bcrypt
-    if annotation_name == 'Bcrypt' or 'Bcrypt' in str(annotation):
+    if annotation_name == 'Bcrypt' or 'Bcrypt' in str(type_):
         if bcrypt is None:
             return None
         return bcrypt
 
     # 3.2 Marshmallow
-    if annotation_name == 'Marshmallow' or 'Marshmallow' in str(annotation):
+    if annotation_name == 'Marshmallow' or 'Marshmallow' in str(type_):
         if ma is None:
             return None
         return ma
 
     # 3.3 Mail
-    if annotation_name == 'Mail' or 'Mail' in str(annotation):
+    if annotation_name == 'Mail' or 'Mail' in str(type_):
         if mail is None:
             return None
         return mail
 
     # 3.4 LoginManager
-    if annotation_name == 'LoginManager' or 'LoginManager' in str(annotation):
+    if annotation_name == 'LoginManager' or 'LoginManager' in str(type_):
         if login_manager is None:
             return None
         return login_manager
 
     # 3.5 JWTManager
-    if annotation_name == 'JWTManager' or 'JWTManager' in str(annotation):
+    if annotation_name == 'JWTManager' or 'JWTManager' in str(type_):
         if jwt_manager is None:
             return None
         return jwt_manager
 
     # 3.6 Migrate
-    if annotation_name == 'Migrate' or 'Migrate' in str(annotation):
+    if annotation_name == 'Migrate' or 'Migrate' in str(type_):
         if migrate is None:
             return None
         return migrate
 
     # 4. DB Session
-    if annotation_name in ('Session', 'scoped_session') or 'Session' in str(annotation) or 'scoped_session' in str(annotation):
+    if annotation_name in ('Session', 'scoped_session') or 'Session' in str(type_) or 'scoped_session' in str(type_):
         if db is None:
             return None
         return db.session
@@ -133,25 +134,25 @@ def resolve_dependency(type_, param_name=None, route_kwargs=None):
     # 5. WTForms Form Subclasses
     try:
         from wtforms import Form
-        if inspect.isclass(annotation) and issubclass(annotation, Form):
+        if inspect.isclass(type_) and issubclass(type_, Form):
             formdata = request.form if request.form else (request.json if request.is_json else None)
             if not formdata and request.files:
                 formdata = request.files
-            return annotation(formdata=formdata)
+            return type_(formdata=formdata)
     except ImportError:
         pass
 
     # 5.5 Marshmallow Schema Subclasses
     try:
         from marshmallow import Schema
-        if inspect.isclass(annotation) and issubclass(annotation, Schema):
-            return annotation()
+        if inspect.isclass(type_) and issubclass(type_, Schema):
+            return type_()
     except ImportError:
         pass
 
     # 6. Service classes (naming convention suffix 'Service')
     if 'Service' in annotation_name:
-        return annotation()
+        return type_()
 
     # 7. Fallback to route kwargs
     if route_kwargs and param_name in route_kwargs:
