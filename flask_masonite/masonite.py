@@ -320,7 +320,19 @@ class Route:
             controller_class = self._get_controller_by_name(controller_name)
             
             if controller_class:
-                controller_instance = controller_class()
+                from inspect import signature
+                init_sig = signature(controller_class.__init__)
+                init_kwargs = {}
+                for param_name, param in init_sig.parameters.items():
+                    if param_name in ('self', 'args', 'kwargs'):
+                        continue
+                    
+                    annotation = param.annotation
+                    val = resolve_dependency(annotation, param_name)
+                    if val is not None:
+                        init_kwargs[param_name] = val
+                
+                controller_instance = controller_class(**init_kwargs)
                 
                 # Apply controller-level middleware
                 for middleware_item in controller_instance.middleware:
