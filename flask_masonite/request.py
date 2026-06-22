@@ -41,8 +41,28 @@ class Request:
             
         return default
 
-    def all(self):
-        """Get all request inputs (JSON, form data, and query parameters) combined"""
+    def query(self, key, default=None):
+        """Strictly retrieve a query string parameter"""
+        if key in flask_request.args:
+            values = flask_request.args.getlist(key)
+            return values if len(values) > 1 else values[0]
+        return default
+
+    def all(self, type=None):
+        """
+        Get request inputs.
+        If type is specified ('json', 'form', 'query'), returns only inputs from that source.
+        Otherwise, returns a combined dictionary of all inputs.
+        """
+        if type == 'json':
+            if flask_request.is_json:
+                return flask_request.get_json(silent=True) or {}
+            return {}
+        elif type == 'form':
+            return flask_request.form.to_dict()
+        elif type == 'query':
+            return flask_request.args.to_dict()
+            
         data = {}
         # 1. Query parameters
         data.update(flask_request.args.to_dict())
