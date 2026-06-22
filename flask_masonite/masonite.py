@@ -400,7 +400,18 @@ class RouteCollection:
         """Register all routes with the given Flask app."""
         blueprints = {}
         
-        for route in self.routes:
+        # Flatten routes recursively to support nested lists and RouteGroups (e.g. nested Route.resource)
+        flat_routes = []
+        def flatten(items):
+            for item in items:
+                if isinstance(item, list):
+                    flatten(item)
+                elif isinstance(item, Route):
+                    flat_routes.append(item)
+                    
+        flatten(self.routes)
+        
+        for route in flat_routes:
             # Create a Flask-compatible view function
             def make_view(route_ref=route):
                 def view(*args, **kwargs):
