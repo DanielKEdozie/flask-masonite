@@ -6,6 +6,8 @@ from functools import wraps
 from flask import request, jsonify, g, abort
 from .helpers import get_signature, resolve_dependency
 import inspect
+from .request import Request
+from .response import Response
 
 
 class ControllerMeta(type):
@@ -35,7 +37,8 @@ class Controller(metaclass=ControllerMeta):
     _bindings = {}
 
     def __init__(self):
-        self.request = request
+        self.request = Request()
+        self.response = Response()
         self.middleware = []
         self.before_middleware = []
         self.after_middleware = []
@@ -92,7 +95,6 @@ class Controller(metaclass=ControllerMeta):
                     init_kwargs[param_name] = val
             
             instance = cls(**init_kwargs)
-            instance.request = request
             
             # Execute action
             if not hasattr(instance, action):
@@ -228,6 +230,11 @@ class Route:
     def any(cls, path, handler, name=None):
         """Create a route that accepts any HTTP method."""
         return cls(path, handler, ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], name)
+
+    @classmethod
+    def match(cls, methods, path, handler, name=None):
+        """Create a route that matches a list of HTTP methods."""
+        return cls(path, handler, methods, name)
 
     @classmethod
     def resource(cls, path, controller, name=None):

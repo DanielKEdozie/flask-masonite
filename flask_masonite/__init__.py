@@ -4,6 +4,8 @@ from .middleware import wrap_with_middleware, AuthMiddleware, APIAuthMiddleware
 from .helpers import get_signature, resolve_dependency
 from .helpers_classes import Task, Email, Security
 from .extensions import register_extension, get_extension, initialize_extension, extension_manager
+from .request import Request
+from .response import Response
 
 __all__ = [
     'Controller',
@@ -12,6 +14,8 @@ __all__ = [
     'RouteGroup',
     'ResourceRoute',
     'Middleware',
+    'Request',
+    'Response',
     'Router',
     'route',
     'get',
