@@ -153,23 +153,31 @@ class Controller(metaclass=ControllerMeta):
         method = getattr(self, method_name)
         sig = inspect.signature(method)
         
-        # Resolve dependencies based on annotations
-        resolved_args = []
-        for param in sig.parameters.values():
-            if param.annotation != param.empty:
-                resolved_arg = resolve_dependency(param.annotation)
-                if resolved_arg is not None:
-                    resolved_args.append(resolved_arg)
-                elif param.default != param.empty:
-                    resolved_args.append(param.default)
-                else:
-                    resolved_args.append(None)
-            elif param.default != param.empty:
-                resolved_args.append(param.default)
-            else:
-                resolved_args.append(None)
+        # Resolve dependencies based on annotations and kwargs
+        resolved_kwargs = {}
+        for param_name, param in sig.parameters.items():
+            if param_name == 'self':
+                continue
                 
-        return method(*resolved_args)
+            # 1. If parameter is passed in kwargs (e.g. dynamic URL parameters like 'id')
+            if param_name in kwargs:
+                resolved_kwargs[param_name] = kwargs[param_name]
+                continue
+                
+            # 2. Resolve via dependency injection annotations
+            if param.annotation != param.empty:
+                resolved_arg = resolve_dependency(param.annotation, param_name, kwargs)
+                if resolved_arg is not None:
+                    resolved_kwargs[param_name] = resolved_arg
+                    continue
+            
+            # 3. Use default value if present
+            if param.default != param.empty:
+                resolved_kwargs[param_name] = param.default
+            else:
+                resolved_kwargs[param_name] = None
+                
+        return method(*args, **resolved_kwargs)
 
 
 class Route:
